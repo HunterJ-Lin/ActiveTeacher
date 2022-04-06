@@ -3,7 +3,7 @@ By [Peng Mi](), [Jianghang Lin](https://github.com/HunterJ-Lin), [Yiyi Zhou](), 
 
 Conference on Computer Vision and Pattern Recognition (CVPR) 2022 Paper.</br>
 <p align="center">
-<img src="teaser/ActiveTeacher.png" width="85%">
+<img src="teaser/ActiveTeacher.png">
 </p>
 
 ## Installation
