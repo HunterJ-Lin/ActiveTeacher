@@ -32,4 +32,4 @@ python tools/generate_pick_merge_random_data_partition.py \
 python tools/train_net.py \
       --num-gpus 8 \
       --config configs/coco/faster_rcnn_R_50_FPN_sup10_run1.yaml \
-       SOLVER.IMG_PER_BATCH_LABEL 16 SOLVER.IMG_PER_BATCH_UNLABEL 16 OUTPUT_DIR coco/faster_rcnn_R_50_FPN_sup10_run1_16bs DATALOADER.RANDOM_DATA_SEED_PATH dataseed/coco_pick/pick_maxnorm5+random5.txt
+       SOLVER.IMG_PER_BATCH_LABEL 16 SOLVER.IMG_PER_BATCH_UNLABEL 16 OUTPUT_DIR output/coco/faster_rcnn_R_50_FPN_sup10_run1_16bs DATALOADER.RANDOM_DATA_SEED_PATH dataseed/coco_pick/pick_maxnorm5+random5.txt
