@@ -112,7 +112,7 @@ python train_net.py \
 
 For PASCAL VOC, the trainset includes `voc07-trainval, voc12-trainval`.The model is evaluated on `voc07-test`.
 
-<table border="1" width="800">
+<table border="0" width="800">
 <tr>
 	<td width="25%" align="center"> <b> Models </b> </td>
 	<td width="25%" align="center"> <b> Datasets </b> </td>
