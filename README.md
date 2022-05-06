@@ -1,16 +1,21 @@
 # Active Teacher for Semi-Supervised Object Detection
-By [Peng Mi](), [Jianghang Lin](https://github.com/HunterJ-Lin), [Yiyi Zhou](), [Yunhang Shen](), [Gen Luo](), [Xiaoshuai Sun](), [Liujuan Cao](), [Rongrong Fu](), [Qiang Xu](), [Rongrong Ji]().
+This is an official implementation for CVPR2022 paper ["Active Teacher for Semi-Supervised Object Detection"](). It includes the code for Active Teacher on Object Detection task. The performance on COCO, PASCAL VOC, SODA is reported in this repo.
 
-Conference on Computer Vision and Pattern Recognition (CVPR) 2022 Paper.</br>
+<!-- by [Peng Mi](), [Jianghang Lin](https://github.com/HunterJ-Lin), [Yiyi Zhou](), [Yunhang Shen](), [Gen Luo](), [Xiaoshuai Sun](), [Liujuan Cao](), [Rongrong Fu](), [Qiang Xu](), [Rongrong Ji](). -->
+<!-- Conference on Computer Vision and Pattern Recognition (CVPR) 2022 Paper.</br> -->
+
+## Introduction
+The overall of our **Active Teacher**. 
 <p align="center">
 <img src="teaser/ActiveTeacher.png">
 </p>
 
+
 ## Installation
 
-Install Detectron2 following [the instructions](https://detectron2.readthedocs.io/tutorials/install.html).
+- Install **detectron2** following the [instructions](https://detectron2.readthedocs.io/tutorials/install.html).
 
-Install activeteacher:
+- Install **Active Teacher** via pip:
 ```
 python3 -m pip install -e .
 ```
@@ -102,9 +107,70 @@ python train_net.py \
        SOLVER.IMG_PER_BATCH_LABEL 16 SOLVER.IMG_PER_BATCH_UNLABEL 16 MODEL.WEIGHTS output/coco/faster_rcnn_R_50_FPN_sup10_run1_16bs/model_final.pth
 ```
 
-## Citing ActiveTeacher
+## Results
+- The results on **different datasets** is shown as below:
 
-If you find ActiveTeacher useful in your research, please consider citing:
+For PASCAL VOC, the trainset includes `voc07-trainval, voc12-trainval`.The model is evaluated on `voc07-test`.
+
+<table border="1" width="800">
+<tr>
+	<td width="25%" align="center"> <b> Models </b> </td>
+	<td width="25%" align="center"> <b> Datasets </b> </td>
+	<td width="15%" align="center"> <b> Labels </b> </td>
+	<td width="25%" align="center"> <b> Supervision(mAP) </b> </td>
+	<td width="25%" align="center"> <b> Ours(mAP) </b> </td>
+</tr>
+	
+<tr>
+	<td width="25" align="center" rowspan="9"> Res50-FPN</td>
+	<td width="25%" align="center" rowspan="5"> COCO </td>
+	<td width="15%" align="center"> 1% </td>
+	<td width="25%" align="center" rowspan="5"> 37.63 </td>
+	<td width="25%" align="center"> 22.20 </td>
+</tr>
+<tr>
+	<td width="15%" align="center"> 2% </td>
+	<td width="25%" align="center"> 24.99 </td>
+</tr>
+<tr>
+	<td width="15%" align="center"> 5% </td>
+	<td width="25%" align="center"> 30.07 </td>
+</tr>
+<tr>
+	<td width="15%" align="center"> 10% </td>
+	<td width="25%" align="center"> 32.58 </td>
+</tr>
+<tr>
+	<td width="15%" align="center"> 20% </td>
+	<td width="25%" align="center"> 35.49 </td>
+</tr>
+
+<tr>
+	<td width="25%" align="center" rowspan="3"> VOC07+12 </td>
+	<td width="15%" align="center"> 5% </td>
+	<td width="25%" align="center" rowspan="3"> 48.62 </td>
+	<td width="25%" align="center"> 41.85 </td>
+</tr>
+<tr>
+	<td width="15%" align="center"> 10% </td>
+	<td width="25%" align="center"> 46.77 </td>
+</tr>
+<tr>
+	<td width="15%" align="center"> 15% </td>
+	<td width="25%" align="center"> 49.73 </td>
+</tr>
+	
+<tr>
+	<td width="25%" align="center"> SODA </td>
+	<td width="15%" align="center"> 10% </td>
+	<td width="25%" align="center"> 34.52 </td>
+	<td width="25%" align="center"> 33.32 </td>
+</tr>
+</table>
+	
+## Citing Active Teacher
+
+If you find Active Teacher useful in your research, please consider citing:
 
 ```
 @InProceedings{ActiveTeacher_2022_CVPR,
@@ -117,7 +183,7 @@ If you find ActiveTeacher useful in your research, please consider citing:
 
 ## License
 
-ActiveTeacher is released under the [Apache 2.0 license](LICENSE).
+Active Teacher is released under the [Apache 2.0 license](LICENSE).
 
 ## Acknowledgement
 -   [STAC](https://github.com/google-research/ssl_detection)
