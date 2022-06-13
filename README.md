@@ -1,5 +1,5 @@
 # Active Teacher for Semi-Supervised Object Detection
-This is an official implementation for CVPR2022 paper ["Active Teacher for Semi-Supervised Object Detection"](). It includes the code for Active Teacher on Object Detection task. The performance on COCO, PASCAL VOC, SODA is reported in this repo.
+This is an official implementation for CVPR2022 paper ["Active Teacher for Semi-Supervised Object Detection"](https://openaccess.thecvf.com/content/CVPR2022/papers/Mi_Active_Teacher_for_Semi-Supervised_Object_Detection_CVPR_2022_paper.pdf). It includes the code for Active Teacher on Object Detection task. The performance on COCO, PASCAL VOC, SODA is reported in this repo.
 
 <!-- by [Peng Mi](), [Jianghang Lin](https://github.com/HunterJ-Lin), [Yiyi Zhou](), [Yunhang Shen](), [Gen Luo](), [Xiaoshuai Sun](), [Liujuan Cao](), [Rongrong Fu](), [Qiang Xu](), [Rongrong Ji](). -->
 <!-- Conference on Computer Vision and Pattern Recognition (CVPR) 2022 Paper.</br> -->
