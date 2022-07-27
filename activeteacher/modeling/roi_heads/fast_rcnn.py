@@ -83,6 +83,88 @@ class FastRCNNOutputs:
             self.proposals = Boxes(torch.zeros(0, 4, device=self.pred_proposal_deltas.device))
         self._no_instances = len(self.proposals) == 0  # no instances found
 
+    def softmax_cross_entropy_loss(self):
+        """
+        Deprecated
+        """
+        _log_classification_stats(self.pred_class_logits, self.gt_classes)
+        return cross_entropy(self.pred_class_logits, self.gt_classes, reduction="mean")
+
+    def box_reg_loss(self):
+        """
+        Deprecated
+        """
+        if self._no_instances:
+            return 0.0 * self.pred_proposal_deltas.sum()
+
+        box_dim = self.proposals.tensor.size(1)  # 4 or 5
+        cls_agnostic_bbox_reg = self.pred_proposal_deltas.size(1) == box_dim
+        device = self.pred_proposal_deltas.device
+
+        bg_class_ind = self.pred_class_logits.shape[1] - 1
+        # Box delta loss is only computed between the prediction for the gt class k
+        # (if 0 <= k < bg_class_ind) and the target; there is no loss defined on predictions
+        # for non-gt classes and background.
+        # Empty fg_inds should produce a valid loss of zero because reduction=sum.
+        fg_inds = nonzero_tuple((self.gt_classes >= 0) & (self.gt_classes < bg_class_ind))[0]
+
+        if cls_agnostic_bbox_reg:
+            # pred_proposal_deltas only corresponds to foreground class for agnostic
+            gt_class_cols = torch.arange(box_dim, device=device)
+        else:
+            # pred_proposal_deltas for class k are located in columns [b * k : b * k + b],
+            # where b is the dimension of box representation (4 or 5)
+            # Note that compared to Detectron1,
+            # we do not perform bounding box regression for background classes.
+            gt_class_cols = box_dim * self.gt_classes[fg_inds, None] + torch.arange(
+                box_dim, device=device
+            )
+
+        if self.box_reg_loss_type == "smooth_l1":
+            gt_proposal_deltas = self.box2box_transform.get_deltas(
+                self.proposals.tensor, self.gt_boxes.tensor
+            )
+            loss_box_reg = smooth_l1_loss(
+                self.pred_proposal_deltas[fg_inds[:, None], gt_class_cols],
+                gt_proposal_deltas[fg_inds],
+                self.smooth_l1_beta,
+                reduction="sum",
+            )
+        elif self.box_reg_loss_type == "giou":
+            fg_pred_boxes = self.box2box_transform.apply_deltas(
+                self.pred_proposal_deltas[fg_inds[:, None], gt_class_cols],
+                self.proposals.tensor[fg_inds],
+            )
+            loss_box_reg = giou_loss(
+                fg_pred_boxes,
+                self.gt_boxes.tensor[fg_inds],
+                reduction="sum",
+            )
+        else:
+            raise ValueError(f"Invalid bbox reg loss type '{self.box_reg_loss_type}'")
+
+        loss_box_reg = loss_box_reg / self.gt_classes.numel()
+        return loss_box_reg
+
+    def losses(self):
+        """
+        Deprecated
+        """
+        return {"loss_cls": self.softmax_cross_entropy_loss(), "loss_box_reg": self.box_reg_loss()}
+
+    def predict_boxes(self):
+        """
+        Deprecated
+        """
+        pred = self.box2box_transform.apply_deltas(self.pred_proposal_deltas, self.proposals.tensor)
+        return pred.split(self.num_preds_per_image, dim=0)
+
+    def predict_probs(self):
+        """
+        Deprecated
+        """
+        probs = F.softmax(self.pred_class_logits, dim=-1)
+        return probs.split(self.num_preds_per_image, dim=0)
 
 # focal loss
 class FastRCNNFocaltLossOutputLayers(FastRCNNOutputLayers):
