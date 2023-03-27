@@ -6,6 +6,7 @@ import torch
 from torch.nn.parallel import DistributedDataParallel
 from fvcore.nn.precise_bn import get_bn_modules
 import numpy as np
+import cv2
 from collections import OrderedDict
 
 import detectron2.utils.comm as comm
@@ -13,6 +14,7 @@ from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.engine import DefaultTrainer, SimpleTrainer, TrainerBase
 from detectron2.engine.train_loop import AMPTrainer
 from detectron2.utils.events import EventStorage
+from detectron2.structures import PolygonMasks, ROIMasks, BitMasks
 from detectron2.evaluation import COCOEvaluator, verify_results, PascalVOCDetectionEvaluator, DatasetEvaluators
 from detectron2.data.dataset_mapper import DatasetMapper
 from detectron2.engine import hooks
@@ -175,6 +177,25 @@ class ActiveTeacherTrainer(DefaultTrainer):
     # =====================================================
     # ================== Pseduo-labeling ==================
     # =====================================================
+    def mask_to_polygons(self, mask):
+        # cv2.RETR_CCOMP flag retrieves all the contours and arranges them to a 2-level
+        # hierarchy. External contours (boundary) of the object are placed in hierarchy-1.
+        # Internal contours (holes) are placed in hierarchy-2.
+        # cv2.CHAIN_APPROX_NONE flag gets vertices of polygons from contours.
+        mask = np.ascontiguousarray(mask)  # some versions of cv2 does not support incontiguous arr
+        res = cv2.findContours(mask.astype("uint8"), cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
+        hierarchy = res[-1]
+        if hierarchy is None:  # empty mask
+            return [], False
+        has_holes = (hierarchy.reshape(-1, 4)[:, 3] >= 0).sum() > 0
+        res = res[-2]
+        res = [x.flatten() for x in res]
+        # These coordinates from OpenCV are integers in range [0, W-1 or H-1].
+        # We add 0.5 to turn them into real-value coordinate space. A better solution
+        # would be to first +0.5 and then dilate the returned polygon by 0.5.
+        res = [x + 0.5 for x in res if len(x) >= 6]
+        return res, has_holes
+
     def threshold_bbox(self, proposal_bbox_inst, thres=0.7, proposal_type="roih"):
         if proposal_type == "rpn":
             valid_map = proposal_bbox_inst.objectness_logits > thres
@@ -207,6 +228,16 @@ class ActiveTeacherTrainer(DefaultTrainer):
             new_proposal_inst.gt_boxes = new_boxes
             new_proposal_inst.gt_classes = proposal_bbox_inst.pred_classes[valid_map]
             new_proposal_inst.scores = proposal_bbox_inst.scores[valid_map]
+
+            # add masks to instances
+            if hasattr(proposal_bbox_inst,'pred_masks'):
+                roi_masks = ROIMasks(proposal_bbox_inst.pred_masks[valid_map, 0, :, :])
+                mask_threshold = 0.5
+                bitmasks = roi_masks.to_bitmasks(
+                    new_proposal_inst.gt_boxes, image_shape[0], image_shape[1], mask_threshold
+                )
+                polygons_masks = [self.mask_to_polygons(bitmask)[0] for bitmask in bitmasks.tensor.cpu().numpy()]
+                new_proposal_inst.gt_masks = PolygonMasks(polygons_masks)
 
         return new_proposal_inst
 
@@ -339,6 +370,17 @@ class ActiveTeacherTrainer(DefaultTrainer):
                 ]
             record_dict.update(new_record_all_unlabel_data)
 
+            def adjust_pseudo_weight(cur_iter, max_iter, ori_weight, method="linear"):
+                if method == "linear":
+                    return cur_iter / max_iter * ori_weight
+                elif method == "cosine":
+                    import math
+                    cos = math.cos(math.pi * cur_iter / max_iter)
+                    w = ori_weight - (0.5 * ori_weight * (cos + 1))
+                    return w
+                else:
+                    raise NotImplementedError(method+" has not implemented")
+
             # weight losses
             loss_dict = {}
             for key in record_dict.keys():
@@ -346,6 +388,9 @@ class ActiveTeacherTrainer(DefaultTrainer):
                     if key == "loss_rpn_loc_pseudo" or key == "loss_box_reg_pseudo":
                         # pseudo bbox regression <- 0
                         loss_dict[key] = record_dict[key] * 0
+                    elif "mask_pseudo" in key:
+                        # loss_dict[key] = record_dict[key] * 0
+                        loss_dict[key] = record_dict[key] * adjust_pseudo_weight(self.iter, self.max_iter, 1, method='cosine')
                     elif key[-6:] == "pseudo":  # unsupervised loss
                         loss_dict[key] = (
                             record_dict[key] *

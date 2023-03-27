@@ -1,3 +1,3 @@
 from .meta_arch import EnsembleTSModel, TwoStageTeacherStudentGeneralizedRCNN
-from .roi_heads import StandardROIHeadsPseudoLab, FastRCNNFocaltLossOutputLayers
+from .roi_heads import StandardROIHeadsPseudoLab, FastRCNNFocaltLossOutputLayers, MaskRCNNConvUpsampleHeadPseudoLab
 from .proposal_generator import PseudoLabRPN
