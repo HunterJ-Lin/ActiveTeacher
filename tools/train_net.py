@@ -46,18 +46,6 @@ def main(args):
 
 if __name__ == "__main__":
     args = default_argument_parser().parse_args()
-    # import os
-    # os.environ["CUDA_VISIBLE_DEVICES"] = "3"
-    # # os.environ["CUDA_VISIBLE_DEVICES"] = "4,5,6,7"
-    # args.config_file = 'configs/voc5/baseline/voc5_sup100_run1.yaml'
-    # # # args.config_file = 'configs/voc/pick/voc07+voc12_sup25_run1.yaml'
-    args.config_file = 'configs/coco/faster_rcnn_R_50_FPN_sup1_run1.yaml'
-    # # args.dist_url='tcp://127.0.0.1:1237'
-    args.num_gpus = 1
-    # args.eval_only = True
-    # #args.opts = ['SOLVER.IMG_PER_BATCH_LABEL', '8', 'SOLVER.IMG_PER_BATCH_UNLABEL', '8',  'MODEL.WEIGHTS', 'output/voc07+voc12/pick/voc07+voc12_sup25_pick_box_number20+random5_8/model_best.pth']
-    # args.opts = ['SOLVER.IMG_PER_BATCH_LABEL', '16', 'SOLVER.IMG_PER_BATCH_UNLABEL', '16',  'MODEL.WEIGHTS', 'output/pick/imagenet_sup20_pick_all_indicator10+random10_16/model_best.pth']
-    args.opts = ['OUTPUT_DIR',"output/temp"]
     print("Command Line Args:", args)
     launch(
         main,

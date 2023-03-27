@@ -89,25 +89,47 @@ def build_detection_test_loader(cfg, dataset_name, mapper=None):
 
 # uesed by unbiased teacher trainer
 def build_detection_semisup_train_loader_two_crops(cfg, mapper=None):
-    # different degree of supervision (e.g., COCO-supervision)
-    dataset_dicts = get_detection_dataset_dicts(
-        cfg.DATASETS.TRAIN,
-        filter_empty=cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS,
-        min_keypoints=cfg.MODEL.ROI_KEYPOINT_HEAD.MIN_KEYPOINTS_PER_IMAGE
-        if cfg.MODEL.KEYPOINT_ON
-        else 0,
-        proposal_files=cfg.DATASETS.PROPOSAL_FILES_TRAIN
-        if cfg.MODEL.LOAD_PROPOSALS
-        else None,
-    )
+    if cfg.DATASETS.CROSS_DATASET:  # cross-dataset (e.g., coco-additional)
+        label_dicts = get_detection_dataset_dicts(
+            cfg.DATASETS.TRAIN_LABEL,
+            filter_empty=cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS,
+            min_keypoints=cfg.MODEL.ROI_KEYPOINT_HEAD.MIN_KEYPOINTS_PER_IMAGE
+            if cfg.MODEL.KEYPOINT_ON
+            else 0,
+            proposal_files=cfg.DATASETS.PROPOSAL_FILES_TRAIN
+            if cfg.MODEL.LOAD_PROPOSALS
+            else None,
+        )
+        unlabel_dicts = get_detection_dataset_dicts(
+            cfg.DATASETS.TRAIN_UNLABEL,
+            filter_empty=False,
+            min_keypoints=cfg.MODEL.ROI_KEYPOINT_HEAD.MIN_KEYPOINTS_PER_IMAGE
+            if cfg.MODEL.KEYPOINT_ON
+            else 0,
+            proposal_files=cfg.DATASETS.PROPOSAL_FILES_TRAIN
+            if cfg.MODEL.LOAD_PROPOSALS
+            else None,
+        )
+    else:
+        # different degree of supervision (e.g., COCO-supervision)
+        dataset_dicts = get_detection_dataset_dicts(
+            cfg.DATASETS.TRAIN,
+            filter_empty=cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS,
+            min_keypoints=cfg.MODEL.ROI_KEYPOINT_HEAD.MIN_KEYPOINTS_PER_IMAGE
+            if cfg.MODEL.KEYPOINT_ON
+            else 0,
+            proposal_files=cfg.DATASETS.PROPOSAL_FILES_TRAIN
+            if cfg.MODEL.LOAD_PROPOSALS
+            else None,
+        )
 
-    # Divide into labeled and unlabeled sets according to supervision percentage
-    label_dicts, unlabel_dicts = divide_label_unlabel(
-        dataset_dicts,
-        cfg.DATALOADER.SUP_PERCENT,
-        cfg.DATALOADER.RANDOM_DATA_SEED,
-        cfg.DATALOADER.RANDOM_DATA_SEED_PATH,
-    )
+        # Divide into labeled and unlabeled sets according to supervision percentage
+        label_dicts, unlabel_dicts = divide_label_unlabel(
+            dataset_dicts,
+            cfg.DATALOADER.SUP_PERCENT,
+            cfg.DATALOADER.RANDOM_DATA_SEED,
+            cfg.DATALOADER.RANDOM_DATA_SEED_PATH,
+        )
 
     label_dataset = DatasetFromList(label_dicts, copy=False)
     # exclude the labeled set from unlabeled dataset
@@ -196,3 +218,63 @@ def build_semisup_batch_data_loader_two_crop(
         )
     else:
         raise NotImplementedError("ASPECT_RATIO_GROUPING = False is not supported yet")
+
+
+# uesed by supervised-only baseline trainer
+def build_detection_semisup_train_loader(cfg, mapper=None):
+
+    dataset_dicts = get_detection_dataset_dicts(
+        cfg.DATASETS.TRAIN,
+        filter_empty=cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS,
+        min_keypoints=cfg.MODEL.ROI_KEYPOINT_HEAD.MIN_KEYPOINTS_PER_IMAGE
+        if cfg.MODEL.KEYPOINT_ON
+        else 0,
+        proposal_files=cfg.DATASETS.PROPOSAL_FILES_TRAIN
+        if cfg.MODEL.LOAD_PROPOSALS
+        else None,
+    )
+
+    if cfg.DATALOADER.RANDOM_DATA_SEED_PATH != "":
+        # Divide into labeled and unlabeled sets according to supervision percentage
+        label_dicts, unlabel_dicts = divide_label_unlabel(
+            dataset_dicts,
+            cfg.DATALOADER.SUP_PERCENT,
+            cfg.DATALOADER.RANDOM_DATA_SEED,
+            cfg.DATALOADER.RANDOM_DATA_SEED_PATH,
+        )
+    else:
+        label_dicts = dataset_dicts
+
+    dataset = DatasetFromList(label_dicts, copy=False)
+
+    if mapper is None:
+        mapper = DatasetMapper(cfg, True)
+    dataset = MapDataset(dataset, mapper)
+
+    sampler_name = cfg.DATALOADER.SAMPLER_TRAIN
+    logger = logging.getLogger(__name__)
+    logger.info("Using training sampler {}".format(sampler_name))
+
+    if sampler_name == "TrainingSampler":
+        sampler = TrainingSampler(len(dataset))
+    elif sampler_name == "RepeatFactorTrainingSampler":
+        repeat_factors = (
+            RepeatFactorTrainingSampler.repeat_factors_from_category_frequency(
+                label_dicts, cfg.DATALOADER.REPEAT_THRESHOLD
+            )
+        )
+        sampler = RepeatFactorTrainingSampler(repeat_factors)
+    else:
+        raise ValueError("Unknown training sampler: {}".format(sampler_name))
+
+    # list num of labeled and unlabeled
+    logger.info("Number of training samples " + str(len(dataset)))
+    logger.info("Supervision percentage " + str(cfg.DATALOADER.SUP_PERCENT))
+
+    return build_batch_data_loader(
+        dataset,
+        sampler,
+        cfg.SOLVER.IMS_PER_BATCH,
+        aspect_ratio_grouping=cfg.DATALOADER.ASPECT_RATIO_GROUPING,
+        num_workers=cfg.DATALOADER.NUM_WORKERS,
+    )
